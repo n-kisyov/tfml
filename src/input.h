@@ -1,0 +1,28 @@
+#ifndef INPUT_H
+#define INPUT_H
+
+#include <stdint.h>
+
+typedef enum {
+    KEY_NONE = 0,
+    KEY_TAB, KEY_ENTER, KEY_ESC, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT,
+    KEY_PAGEUP, KEY_PAGEDOWN, KEY_HOME, KEY_END, KEY_SPACE,
+    KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5,
+    KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11, KEY_F12,
+    KEY_CTRL_T, KEY_CTRL_W, KEY_CTRL_C, KEY_CTRL_R, KEY_CTRL_D,
+    KEY_ALT_SHIFT_N, KEY_ALT_SHIFT_B, KEY_ALT_SHIFT_M,
+    KEY_BACKSPACE, KEY_DELETE, KEY_INSERT,
+    KEY_CHAR, KEY_RESIZE
+} KeyCode;
+
+typedef struct {
+    KeyCode code;
+    char    ch;
+} KeyEvent;
+
+int  input_init(void);
+void input_shutdown(void);
+int  input_poll(KeyEvent *ev);
+int  input_poll_timeout(KeyEvent *ev, unsigned int timeout_ms);
+
+#endif
