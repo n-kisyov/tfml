@@ -30,7 +30,9 @@ static void emit_sgr(void) {
     buf_appends("\x1b[0");
     if(g_cur_fg!=0xFFFFFFFF) buf_fmt(";38;2;%d;%d;%d",(g_cur_fg>>16)&0xFF,(g_cur_fg>>8)&0xFF,g_cur_fg&0xFF);
     if(g_cur_bg!=0xFFFFFFFF) buf_fmt(";48;2;%d;%d;%d",(g_cur_bg>>16)&0xFF,(g_cur_bg>>8)&0xFF,g_cur_bg&0xFF);
-    if(g_bold) buf_appends(";1"); if(g_dim) buf_appends(";2"); if(g_reverse) buf_appends(";7");
+    if(g_bold) buf_appends(";1");
+    if(g_dim) buf_appends(";2");
+    if(g_reverse) buf_appends(";7");
     buf_appends("m");
 }
 
@@ -42,7 +44,7 @@ void ui_init(void) {
 
 void ui_shutdown(void) {
     free(g_buf); g_buf=NULL; g_buf_cap=0;
-    write(STDOUT_FILENO,"\x1b[?1049l\x1b[0m",14);
+    write(STDOUT_FILENO,"\x1b[?1049l\x1b[0m",12);
 }
 
 void ui_begin_frame(void) {
@@ -55,7 +57,8 @@ void ui_end_frame(void) { write(STDOUT_FILENO,g_buf,g_buf_len); }
 
 void ui_get_term_size(int *w, int *h) {
     struct winsize ws; if(ioctl(STDOUT_FILENO,TIOCGWINSZ,&ws)==0){g_termW=ws.ws_col;g_termH=ws.ws_row;}
-    if(w)*w=g_termW; if(h)*h=g_termH;
+    if(w)*w=g_termW;
+    if(h)*h=g_termH;
 }
 
 void ui_set_fg(uint32_t rgb){g_cur_fg=rgb;} void ui_set_bg(uint32_t rgb){g_cur_bg=rgb;}
@@ -73,13 +76,15 @@ void ui_clear_screen(void) {
 void ui_draw_text(int x, int y, const char *text) { if(!text)return; emit_sgr();ui_move(x,y);buf_appends(text); }
 
 void ui_draw_text_trunc(int x, int y, int max_w, const char *text) {
-    if(!text||max_w<=0) return; emit_sgr(); ui_move(x,y);
+    if(!text||max_w<=0) return;
+    emit_sgr(); ui_move(x,y);
     int len=(int)strlen(text); if(len>max_w)len=max_w;
     buf_append(text,len); for(int i=len;i<max_w;i++) buf_appends(" ");
 }
 
 void ui_draw_text_centered(int y, int max_w, const char *text) {
-    if(!text)return; int len=(int)strlen(text); int x=(max_w-len)/2; if(x<0)x=0; ui_draw_text(x,y,text);
+    if(!text)return;
+    int len=(int)strlen(text); int x=(max_w-len)/2; if(x<0)x=0; ui_draw_text(x,y,text);
 }
 
 void ui_draw_char(int x, int y, char ch) { emit_sgr();ui_move(x,y);buf_append(&ch,1); }
@@ -89,10 +94,7 @@ void ui_draw_v_line(int x, int y, int h, char ch) { for(int i=0;i<h;i++)ui_draw_
 
 void ui_draw_rect(int x, int y, int w, int h) {
     if(w<2||h<2)return;
-    ui_draw_char(x,y,'\xE2\x94\x8C'[0]); /* ┌ */
-    buf_append("\xE2\x94\x8C"+1,2); /* rest of utf-8 */
-    /* using simpler approach: direct unicode bytes */
-    /* top-left */ ui_move(x,y); buf_appends("\xe2\x94\x8c"); /* ┌ */
+    ui_move(x,y); buf_appends("\xe2\x94\x8c"); /* ┌ */
     /* top-right */ ui_move(x+w-1,y); buf_appends("\xe2\x94\x90"); /* ┐ */
     /* bottom-left */ ui_move(x,y+h-1); buf_appends("\xe2\x94\x94"); /* └ */
     /* bottom-right */ ui_move(x+w-1,y+h-1); buf_appends("\xe2\x94\x98"); /* ┘ */
@@ -123,7 +125,9 @@ void ui_show_cursor(int x, int y){ui_move(x,y);buf_appends("\x1b[?25h");}
 void ui_message_box(const Theme *theme, const char *title, const char *msg) {
     int tw,th; ui_get_term_size(&tw,&th);
     int bw=(int)strlen(msg)+8; if(bw<(int)strlen(title)+8)bw=(int)strlen(title)+8;
-    if(bw>tw-4)bw=tw-4; if(bw<20)bw=20; int bh=5,bx=(tw-bw)/2,by=(th-bh)/2;
+    if(bw>tw-4)bw=tw-4;
+    if(bw<20)bw=20;
+    int bh=5,bx=(tw-bw)/2,by=(th-bh)/2;
     while(1){ ui_begin_frame();
         ui_set_bg(theme_get(theme,COLOR_BG));ui_clear_screen();ui_reset_colors();
         ui_set_bg(theme_get(theme,COLOR_DIALOG_BG));ui_set_fg(theme_get(theme,COLOR_FILE));
@@ -141,7 +145,9 @@ void ui_message_box(const Theme *theme, const char *title, const char *msg) {
 int ui_confirm_dialog(const Theme *theme, const char *title, const char *msg) {
     int tw,th; ui_get_term_size(&tw,&th);
     int bw=(int)strlen(msg)+8; if(bw<(int)strlen(title)+8)bw=(int)strlen(title)+8;
-    if(bw>tw-4)bw=tw-4;if(bw<30)bw=30; int bh=6,bx=(tw-bw)/2,by=(th-bh)/2,selected=1;
+    if(bw>tw-4)bw=tw-4;
+    if(bw<30)bw=30;
+    int bh=6,bx=(tw-bw)/2,by=(th-bh)/2,selected=1;
     while(1){ ui_begin_frame();
         ui_set_bg(theme_get(theme,COLOR_BG));ui_clear_screen();ui_reset_colors();
         ui_set_bg(theme_get(theme,COLOR_DIALOG_BG));ui_set_fg(theme_get(theme,COLOR_FILE));
@@ -158,7 +164,8 @@ int ui_confirm_dialog(const Theme *theme, const char *title, const char *msg) {
             ui_draw_text(bx+bw-12,yb,"  No   ");ui_reset_colors(); } ui_reset_colors(); ui_end_frame();
         KeyEvent ev; while(input_poll(&ev)){if(ev.code==KEY_RESIZE)continue;
             if(ev.code==KEY_LEFT||ev.code==KEY_RIGHT||ev.code==KEY_TAB){selected=!selected;break;}
-            if(ev.code==KEY_ENTER)return selected; if(ev.code==KEY_ESC)return 0;
+            if(ev.code==KEY_ENTER)return selected;
+            if(ev.code==KEY_ESC)return 0;
             if(ev.code==KEY_CHAR){if(ev.ch=='y'||ev.ch=='Y')return 1;if(ev.ch=='n'||ev.ch=='N')return 0;} break; } }
 }
 
@@ -203,7 +210,8 @@ void ui_draw_history(const Theme *theme, int tw, int th,
     ui_set_fg(theme_get(theme,COLOR_FOCUS_BORDER));ui_draw_rect(bx,by,bw,bh);
     ui_set_bg(theme_get(theme,COLOR_DIALOG_BG));ui_set_fg(theme_get(theme,COLOR_SELECTED_FG));ui_set_bold();
     ui_draw_text(bx+2,by+1,"  Operation history");
-    if(show_current) ui_draw_text(bx+bw-20,by+1," [running]"); ui_reset_colors();
+    if(show_current) ui_draw_text(bx+bw-20,by+1," [running]");
+    ui_reset_colors();
     int row=by+2,inner_w=bw-4;
     const char *opnames[]={"?","Copy","Move","Delete"};
     if(show_current&&bt&&bt->active){ ui_set_bg(theme_get(theme,COLOR_DIALOG_BG));
@@ -214,9 +222,10 @@ void ui_draw_history(const Theme *theme, int tw, int th,
                  bt->done_items,bt->total_items,pct,bt->current_file[0]?bt->current_file:"...");
         ui_draw_text_trunc(bx+2,row,inner_w,buf);ui_reset_colors();row++;
         ui_set_bg(theme_get(theme,COLOR_TAB_INACTIVE));ui_set_fg(theme_get(theme,COLOR_TAB_INACTIVE));
-        ui_draw_h_line(bx+2,row,inner_w,'\xE2'[0]); /* shade */ ui_move(bx+2,row); buf_appends("\xe2\x96\x91");
+        ui_draw_h_line(bx+2,row,inner_w,' '); ui_move(bx+2,row); buf_appends("\xe2\x96\x91");
         if(bt->total_items>0){ int fill=(int)(((int64_t)bt->done_items*(inner_w-2))/bt->total_items);
-            if(fill<0)fill=0;if(fill>inner_w-2)fill=inner_w-2;
+            if(fill<0)fill=0;
+            if(fill>inner_w-2)fill=inner_w-2;
             ui_set_bg(theme_get(theme,COLOR_PROGRESS));ui_set_fg(theme_get(theme,COLOR_PROGRESS));
             for(int i=0;i<fill;i++){ui_move(bx+3+i,row);buf_appends("\xe2\x96\x88");} } ui_reset_colors();row++; }
     if(hist_count>0){ ui_set_fg(theme_get(theme,COLOR_PANEL_BORDER));

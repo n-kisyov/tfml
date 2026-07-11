@@ -7,8 +7,31 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 
 AppState g_app;
+
+static int copy_file_content(const char *src, const char *dst) {
+    int sfd=open(src,O_RDONLY); if(sfd<0) return -1;
+    int dfd=open(dst,O_WRONLY|O_CREAT|O_TRUNC,0644); if(dfd<0){close(sfd);return -1;}
+    char buf[4096]; ssize_t n;
+    while((n=read(sfd,buf,sizeof(buf)))>0) { if(write(dfd,buf,n)!=n){close(sfd);close(dfd);return-1;} }
+    close(sfd);close(dfd);return 0;
+}
+
+static void bootstrap_themes(void) {
+    get_themes_dir();
+    char dst[4096]; snprintf(dst,4096,"%s/default.json",get_themes_dir());
+    struct stat st; if(stat(dst,&st)==0) return;
+    if(copy_file_content("themes/default.json",dst)==0) return;
+    const char *xdg=getenv("XDG_DATA_HOME");
+    if(xdg){ char src[4096]; snprintf(src,4096,"%s/tfm/themes/default.json",xdg);
+        if(copy_file_content(src,dst)==0) return; }
+    char src[4096]; snprintf(src,4096,"%s/.local/share/tfm/themes/default.json",get_home_dir());
+    copy_file_content(src,dst);
+}
 
 static int panel_h_for(int idx);
 
@@ -18,13 +41,9 @@ static void init_app(void) {
     const char *cfg_path=config_get_path();
     config_set_defaults(&g_app.config);
     if(!config_load(&g_app.config,cfg_path)) config_save(&g_app.config,cfg_path);
-    char theme_full[4096];
+    bootstrap_themes();
     if(g_app.config.theme_path[0]) {
-        if(!theme_load(&g_app.theme,g_app.config.theme_path)) {
-            const char *fn=strrchr(g_app.config.theme_path,'/');if(fn)fn++;else fn=g_app.config.theme_path;
-            snprintf(theme_full,4096,"themes/%s",fn);
-            if(!theme_load(&g_app.theme,theme_full)) theme_set_default(&g_app.theme);
-        }
+        if(!theme_load(&g_app.theme,g_app.config.theme_path)) theme_set_default(&g_app.theme);
     } else theme_set_default(&g_app.theme);
     g_app.fs=&fs_local;
     for(int i=0;i<2;i++) {
@@ -40,7 +59,8 @@ static void init_app(void) {
     cmdline_init(&g_app.cmdline);g_app.focus=FOCUS_LEFT;
     ui_get_term_size(&g_app.tw,&g_app.th);
     g_app.left_w=(g_app.tw*g_app.config.panel_split_pct)/100;
-    if(g_app.left_w<20)g_app.left_w=20;if(g_app.left_w>g_app.tw-20)g_app.left_w=g_app.tw-20;
+    if(g_app.left_w<20)g_app.left_w=20;
+    if(g_app.left_w>g_app.tw-20)g_app.left_w=g_app.tw-20;
     g_app.running=1;g_app.needs_redraw=1;bgop_init(&g_app.bgtask);
 }
 
@@ -206,7 +226,9 @@ int main(void) {
     while(g_app.running) {
         int ow=g_app.tw,oh=g_app.th;ui_get_term_size(&g_app.tw,&g_app.th);
         if(g_app.tw!=ow||g_app.th!=oh){g_app.left_w=(g_app.tw*g_app.config.panel_split_pct)/100;
-        if(g_app.left_w<20)g_app.left_w=20;if(g_app.left_w>g_app.tw-20)g_app.left_w=g_app.tw-20;g_app.needs_redraw=1;}
+            if(g_app.left_w<20)g_app.left_w=20;
+            if(g_app.left_w>g_app.tw-20)g_app.left_w=g_app.tw-20;
+            g_app.needs_redraw=1;}
         if(__atomic_load_n(&g_app.bgtask.finished,__ATOMIC_SEQ_CST)) {
             int si=g_app.bgtask.panel_src_idx,di=g_app.bgtask.panel_dst_idx;
             Panel *src=&g_app.panels[si],*dst=(di>=0)?&g_app.panels[di]:NULL;
@@ -218,9 +240,11 @@ int main(void) {
         if(g_app.needs_redraw){render();g_app.needs_redraw=0;}
         KeyEvent ev;int gi=bgop_is_active(&g_app.bgtask)?input_poll_timeout(&ev,100):input_poll(&ev);
         if(gi){switch(ev.code){case KEY_F12:g_app.running=0;break;case KEY_RESIZE:g_app.needs_redraw=1;break;
-            default:if(g_app.focus==FOCUS_LEFT)handle_panel_input(&g_app.panels[0],0,&ev);
-            else if(g_app.focus==FOCUS_RIGHT)handle_panel_input(&g_app.panels[1],1,&ev);
-            else handle_cmdline_input(&ev);break;}}
+            default:
+                if(g_app.focus==FOCUS_LEFT)handle_panel_input(&g_app.panels[0],0,&ev);
+                else if(g_app.focus==FOCUS_RIGHT)handle_panel_input(&g_app.panels[1],1,&ev);
+                else handle_cmdline_input(&ev);
+                break;}}
     }
     shutdown_app();return 0;
 }

@@ -10,7 +10,7 @@
 
 void config_set_defaults(Config *c) {
     memset(c,0,sizeof(Config));
-    strcpy(c->theme_path,"themes/default.json");
+    snprintf(c->theme_path,CONFIG_MAX_PATH,"%s/default.json",get_themes_dir());
     c->startup_tab_counts[0]=1; c->startup_tab_counts[1]=1;
     char *home=get_home_dir();
     for(int i=0;i<2;i++) strncpy(c->startup_dirs[i][0],home,CONFIG_MAX_PATH-1);
@@ -43,6 +43,7 @@ int config_load(Config *c, const char *path) {
     if(tp) strncpy(c->theme_path,tp,CONFIG_MAX_PATH-1);
     c->sort_by=(int)json_get_num(&root,"sort_by",0);
     c->sort_reverse=json_get_bool(&root,"sort_reverse",0);
+    c->show_hidden=json_get_bool(&root,"show_hidden",0);
     c->panel_split_pct=(int)json_get_num(&root,"panel_split_pct",50);
     if(c->panel_split_pct<20)c->panel_split_pct=20;
     if(c->panel_split_pct>80)c->panel_split_pct=80;
@@ -76,6 +77,15 @@ static int buf_puts(char *buf, int cap, int pos, const char *str) {
     buf[pos]=0; return pos;
 }
 
+static int buf_puts_num(char *buf, int cap, int pos, int val) {
+    char tmp[32]; snprintf(tmp,sizeof(tmp),"%d",val);
+    return buf_puts(buf,cap,pos,tmp);
+}
+
+static int buf_puts_bool(char *buf, int cap, int pos, int val) {
+    return buf_puts(buf,cap,pos,val?"true":"false");
+}
+
 static int buf_json_string(char *buf, int cap, int pos, const char *str) {
     if(pos>=cap-2) return pos;
     buf[pos++]='"';
@@ -102,9 +112,15 @@ int config_save(const Config *c, const char *path) {
     pos=buf_puts(buf,cap,pos,"  \"theme\": ");
     pos=buf_json_string(buf,cap,pos,c->theme_path);
     pos=buf_puts(buf,cap,pos,",\n");
-    pos=buf_puts(buf,cap,pos,"  \"sort_by\": 0,\n");
-    pos=buf_puts(buf,cap,pos,"  \"sort_reverse\": false,\n");
-    pos=buf_puts(buf,cap,pos,"  \"panel_split_pct\": 50,\n");
+    pos=buf_puts(buf,cap,pos,"  \"sort_by\": ");
+    pos=buf_puts_num(buf,cap,pos,c->sort_by);
+    pos=buf_puts(buf,cap,pos,",\n  \"sort_reverse\": ");
+    pos=buf_puts_bool(buf,cap,pos,c->sort_reverse);
+    pos=buf_puts(buf,cap,pos,",\n  \"show_hidden\": ");
+    pos=buf_puts_bool(buf,cap,pos,c->show_hidden);
+    pos=buf_puts(buf,cap,pos,",\n  \"panel_split_pct\": ");
+    pos=buf_puts_num(buf,cap,pos,c->panel_split_pct);
+    pos=buf_puts(buf,cap,pos,",\n");
     pos=buf_puts(buf,cap,pos,"  \"panels\": [\n");
     for(int pi=0;pi<2;pi++) {
         pos=buf_puts(buf,cap,pos,"    {\n");

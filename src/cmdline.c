@@ -46,8 +46,9 @@ static void add_history(CmdLine *c, const char *cmd) {
     c->history[c->history_count++]=strdup_safe(cmd);c->history_pos=0; }
 
 int cmdline_execute(CmdLine *c) {
-    if(c->length==0)return 0;c->buffer[c->length]=0;add_history(c,c->buffer);
-    char cmd[CMDLINE_MAX_LEN];strncpy(cmd,c->buffer,CMDLINE_MAX_LEN-1);
+    if(c->length==0)return 0;
+    c->buffer[c->length]=0;add_history(c,c->buffer);
+    char cmd[CMDLINE_MAX_LEN];memcpy(cmd,c->buffer,CMDLINE_MAX_LEN-1);cmd[CMDLINE_MAX_LEN-1]=0;
     char tmp_path[]="/tmp/tfm-out-XXXXXX";
     int tmp_fd=mkstemp(tmp_path);if(tmp_fd<0)goto cleanup;
     pid_t pid=fork();
@@ -71,7 +72,8 @@ void cmdline_render(const CmdLine *c, const Theme *theme, int x, int y, int w, i
         ui_set_bg(theme_get(theme,COLOR_DIALOG_BG));ui_set_fg(theme_get(theme,COLOR_FILE));
         int line=0;const char *p=c->last_output;
         while(*p&&line<th){const char *nl=strchr(p,'\n');int pl=nl?(int)(nl-p):(int)strlen(p);
-        if(pl>tw-4)pl=tw-4;char lbuf[512];strncpy(lbuf,p,pl);lbuf[pl]=0;
+        if(pl>tw-4)pl=tw-4;
+        char lbuf[512];memcpy(lbuf,p,pl);lbuf[pl]=0;
         ui_draw_text_trunc(tx+2,ty+1+line,tw-4,lbuf);line++;if(nl)p=nl+1;else break;}
         ui_set_fg(theme_get(theme,COLOR_DIALOG_BORDER));
         {const char *ft="Press any key to dismiss";ui_draw_text(tx+(tw-(int)strlen(ft))/2,ty+th+1,ft);}

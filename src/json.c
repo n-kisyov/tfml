@@ -81,7 +81,8 @@ static JsonValue parse_value(Parser *p) {
     if (c=='"') { v.type=JSON_STRING; v.str_val=parse_string(p); return v; }
     if (c=='t'||c=='f') { v.type=JSON_BOOL;
         if(strncmp(p->text+p->pos,"true",4)==0){v.bool_val=1;p->pos+=4;}
-        else if(strncmp(p->text+p->pos,"false",5)==0){v.bool_val=0;p->pos+=5;} return v; }
+        else if(strncmp(p->text+p->pos,"false",5)==0){v.bool_val=0;p->pos+=5;}
+        return v; }
     if (c=='n') { if(strncmp(p->text+p->pos,"null",4)==0){v.type=JSON_NULL;p->pos+=4;} return v; }
     if ((c>='0'&&c<='9')||c=='-'||c=='+'||c=='.') { char *e; v.type=JSON_NUMBER;
         v.num_val=strtod(p->text+p->pos,&e); p->pos=(int)(e-p->text); return v; }

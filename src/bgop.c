@@ -5,8 +5,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <errno.h>
 #include <time.h>
 
@@ -99,16 +101,19 @@ static void *bg_thread_delete(void *param) {
     return NULL; }
 
 int bgop_start_copy(BgTask *t) {
-    if(bgop_is_active(t))return 0;t->op_type=BGOP_COPY;t->active=1;t->finished=0;t->visible=1;
+    if(bgop_is_active(t))return 0;
+    t->op_type=BGOP_COPY;t->active=1;t->finished=0;t->visible=1;
     t->error=0;t->done_items=0;t->total_items=t->path_count;t->current_file[0]=0;
     return pthread_create(&t->thread,NULL,bg_thread_copy,t)==0; }
 
 int bgop_start_move(BgTask *t) {
-    if(bgop_is_active(t))return 0;t->op_type=BGOP_MOVE;t->active=1;t->finished=0;t->visible=1;
+    if(bgop_is_active(t))return 0;
+    t->op_type=BGOP_MOVE;t->active=1;t->finished=0;t->visible=1;
     t->error=0;t->done_items=0;t->total_items=t->path_count;t->current_file[0]=0;
     return pthread_create(&t->thread,NULL,bg_thread_move,t)==0; }
 
 int bgop_start_delete(BgTask *t) {
-    if(bgop_is_active(t))return 0;t->op_type=BGOP_DELETE;t->active=1;t->finished=0;t->visible=1;
+    if(bgop_is_active(t))return 0;
+    t->op_type=BGOP_DELETE;t->active=1;t->finished=0;t->visible=1;
     t->error=0;t->done_items=0;t->total_items=t->path_count;t->current_file[0]=0;
     return pthread_create(&t->thread,NULL,bg_thread_delete,t)==0; }

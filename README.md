@@ -8,12 +8,36 @@ This is the Linux port of the original tfm for Windows 11.
 
 ## Building
 
+### Quick build (development, dynamic linking)
+
 ```bash
-gcc -static -std=c11 -Wall -Wextra -O2 -s src/*.c -o tfm \
-    -lpthread -lutil
+make release     # optimized build
+make debug       # debug build with -g -O0
 ```
 
-Requires GCC and standard development headers (`build-essential` on Debian).
+### Static release build (musl, portable)
+
+```bash
+./build.sh       # auto-detects musl-gcc, installs musl-tools on Debian if missing
+```
+
+The `build.sh` script produces a fully statically linked binary in `bin/tfm`
+that runs on any Linux system regardless of the host's libc version.
+
+### Build requirements
+
+| Method | Dependencies |
+|--------|-------------|
+| `make` | `gcc`, `make` (`build-essential` on Debian) |
+| `./build.sh` | `musl-tools` (auto-installed on Debian) or `musl-gcc` |
+
+### Install
+
+```bash
+make install                    # installs to /usr/local
+make install PREFIX=/usr        # installs to /usr
+make install DESTDIR=/tmp/pkg   # for packaging
+```
 
 ## Keyboard Shortcuts
 
@@ -65,11 +89,13 @@ Requires GCC and standard development headers (`build-essential` on Debian).
 Saved to `$XDG_CONFIG_HOME/tfm/config.json` (or `~/.config/tfm/config.json`) on exit:
 - Startup directory per panel (main tab only)
 - Per-mount last-visited paths
-- Theme selection
+- Theme selection, sort order, show hidden files, panel split
 
 ## Theming
 
-Themes are JSON files in `themes/`. Default: `themes/default.json` (Catppuccin-inspired dark).
+Themes are stored in `$XDG_CONFIG_HOME/tfm/themes/` (or `~/.config/tfm/themes/`).
+On first run, the default theme is copied there automatically.
+Default: Catppuccin-inspired dark theme.
 
 ## Platform Differences from Windows Version
 

@@ -2,6 +2,7 @@
 #define FS_H
 
 #include <stdint.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 
 typedef enum { ENTRY_FILE, ENTRY_DIR, ENTRY_SYMLINK } EntryType;

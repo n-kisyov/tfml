@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include <sys/stat.h>
 
 #define MAX_PATH_LEN 4096
@@ -24,6 +25,7 @@ const char *get_file_ext(const char *name);
 int    str_compare_natural(const char *a, const char *b);
 char  *get_home_dir(void);
 char  *get_config_dir(void);
+char  *get_themes_dir(void);
 char  *format_file_size(uint64_t bytes, char *buf, size_t buf_size);
 char  *format_file_time(const FileTime *ft, char *buf, size_t buf_size);
 

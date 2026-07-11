@@ -45,7 +45,8 @@ static int copy_dir_tree(const char *src, const char *dest, const Theme *theme, 
 }
 
 int ops_copy_files(const char **paths, int count, const char *dest_dir, const Theme *theme) {
-    if(!paths||count<=0||!dest_dir) return -1; int copied=0;
+    if(!paths||count<=0||!dest_dir) return -1;
+    int copied=0;
     for(int i=0;i<count;i++) {
         const char *name=strrchr(paths[i],'/'); if(!name) name=paths[i]; else name++;
         char *dest=path_join(dest_dir,name); if(!dest) continue;
@@ -76,7 +77,8 @@ static int delete_dir_tree(const char *path) {
 }
 
 int ops_move_files(const char **paths, int count, const char *dest_dir, const Theme *theme) {
-    if(!paths||count<=0||!dest_dir) return -1; int moved=0;
+    if(!paths||count<=0||!dest_dir) return -1;
+    int moved=0;
     for(int i=0;i<count;i++) {
         const char *name=strrchr(paths[i],'/'); if(!name) name=paths[i]; else name++;
         char *dest=path_join(dest_dir,name); if(!dest) continue;

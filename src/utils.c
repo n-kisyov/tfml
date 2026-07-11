@@ -58,7 +58,8 @@ const char *get_file_ext(const char *name) {
 
 static int natural_compare_part(const char **pa, const char **pb) {
     const char *a=*pa,*b=*pb;
-    while(*a=='0')a++; while(*b=='0')b++;
+    while(*a=='0')a++;
+    while(*b=='0')b++;
     int diff=0;
     while(1) {
         int da=(a[0]>='0'&&a[0]<='9'), db=(b[0]>='0'&&b[0]<='9');
@@ -95,6 +96,14 @@ char *get_config_dir(void) {
     const char *xdg=getenv("XDG_CONFIG_HOME");
     if(xdg) snprintf(buf,4096,"%s/tfm",xdg);
     else snprintf(buf,4096,"%s/.config/tfm",get_home_dir());
+    mkdir(buf,0755);
+    return buf;
+}
+
+char *get_themes_dir(void) {
+    static char buf[4104]={0};
+    if(buf[0]) return buf;
+    snprintf(buf,sizeof(buf),"%s/themes",get_config_dir());
     mkdir(buf,0755);
     return buf;
 }

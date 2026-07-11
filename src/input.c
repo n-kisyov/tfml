@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
+#include <time.h>
 #include <termios.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -11,15 +13,23 @@
 
 static struct termios g_old_termios;
 static int g_initialized=0;
-static volatile int g_resized=0;
+static volatile sig_atomic_t g_resized=0;
 static int g_lastW=80,g_lastH=24;
 
 static void sigwinch_handler(int sig) { (void)sig; g_resized=1; }
 
+static void make_raw(struct termios *t) {
+    t->c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON);
+    t->c_oflag &= ~OPOST;
+    t->c_lflag &= ~(ECHO|ECHONL|ICANON|ISIG|IEXTEN);
+    t->c_cflag &= ~(CSIZE|PARENB);
+    t->c_cflag |= CS8;
+}
+
 int input_init(void) {
     if(tcgetattr(STDIN_FILENO,&g_old_termios)!=0) return -1;
     struct termios raw=g_old_termios;
-    cfmakeraw(&raw);
+    make_raw(&raw);
     raw.c_cc[VMIN]=0;
     raw.c_cc[VTIME]=0;
     if(tcsetattr(STDIN_FILENO,TCSANOW,&raw)!=0) return -1;
@@ -42,7 +52,8 @@ static int parse_escape(KeyEvent *ev) {
     struct timespec start,now;
     clock_gettime(CLOCK_MONOTONIC,&start);
     while(sl<31) {
-        if(poll(&pfd,1,5)<=0) break;
+        int pr; while((pr=poll(&pfd,1,5))<0&&errno==EINTR);
+        if(pr<=0) break;
         char c; if(read(STDIN_FILENO,&c,1)!=1) break;
         seq[sl++]=c;
         clock_gettime(CLOCK_MONOTONIC,&now);
@@ -128,16 +139,22 @@ int input_poll(KeyEvent *ev) {
     if(ioctl(STDOUT_FILENO,TIOCGWINSZ,&ws)==0&&(ws.ws_col!=g_lastW||ws.ws_row!=g_lastH)) {
         g_lastW=ws.ws_col; g_lastH=ws.ws_row; ev->code=KEY_RESIZE; return 1; }
     struct pollfd pfd={.fd=STDIN_FILENO,.events=POLLIN};
-    if(poll(&pfd,1,-1)<=0) return 0;
+    int pr;
+    while((pr=poll(&pfd,1,-1))<0&&errno==EINTR);
+    if(pr<=0) return 0;
     char c;
     ssize_t n=read(STDIN_FILENO,&c,1);
     if(n!=1) return 0;
 
-    if(g_resized) { g_resized=0; ev->code=KEY_RESIZE; return 1; }
+    if(g_resized) { g_resized=0;
+        struct winsize ws2;
+        if(ioctl(STDOUT_FILENO,TIOCGWINSZ,&ws2)==0){g_lastW=ws2.ws_col;g_lastH=ws2.ws_row;}
+        ev->code=KEY_RESIZE; return 1; }
 
     if(c=='\x1b') { /* Escape or ANSI escape sequence */
         struct pollfd pfd2={.fd=STDIN_FILENO,.events=POLLIN};
-        if(poll(&pfd2,1,10)>0) {
+        int pr2; while((pr2=poll(&pfd2,1,10))<0&&errno==EINTR);
+        if(pr2>0) {
             if(parse_escape(ev)) return 1;
         }
         ev->code=KEY_ESC; return 1;
@@ -170,6 +187,8 @@ int input_poll_timeout(KeyEvent *ev, unsigned int timeout_ms) {
     if(ioctl(STDOUT_FILENO,TIOCGWINSZ,&ws)==0&&(ws.ws_col!=g_lastW||ws.ws_row!=g_lastH)) {
         g_lastW=ws.ws_col;g_lastH=ws.ws_row;ev->code=KEY_RESIZE;return 1;}
     struct pollfd pfd={.fd=STDIN_FILENO,.events=POLLIN};
-    if(poll(&pfd,1,(int)timeout_ms)<=0) return 0;
+    int pr;
+    while((pr=poll(&pfd,1,(int)timeout_ms))<0&&errno==EINTR);
+    if(pr<=0) return 0;
     return input_poll(ev);
 }

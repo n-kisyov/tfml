@@ -17,7 +17,7 @@ static int fs_local_list_dir(const char *path, FileEntry **entries, int *count) 
     while((de=readdir(d))!=NULL) {
         if(strcmp(de->d_name,".")==0||strcmp(de->d_name,"..")==0) continue;
         if(cnt>=cap){cap*=2;list=(FileEntry*)xrealloc(list,cap*sizeof(FileEntry));}
-        strncpy(list[cnt].name,de->d_name,255);
+        memcpy(list[cnt].name,de->d_name,255);list[cnt].name[255]=0;
         char full[4096];
         snprintf(full,4096,"%s/%s",path,de->d_name);
         struct stat st;

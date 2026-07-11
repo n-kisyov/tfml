@@ -28,7 +28,8 @@ void panel_enter_dir(Panel *p, const FsProvider *fs) {
     PanelTab *tab=&p->tabs[p->active_tab]; if(!p->entry_count)return;
     FileEntry *e=&p->entries[tab->cursor];
     if(e->type==ENTRY_DIR){ char *np=path_join(tab->path,e->name);
-        strncpy(tab->path,np,4095); strncpy(tab->display_name,e->name,63); free(np);
+        strncpy(tab->path,np,4095);
+        memcpy(tab->display_name,e->name,63);tab->display_name[63]=0; free(np);
         char drive=tab->path[0]; if(drive) strncpy(p->drive_paths[0],tab->path,4095);
         tab->cursor=tab->scroll_offset=0; panel_refresh(p,fs); } }
 
@@ -67,8 +68,10 @@ void panel_go_drives(Panel *p, const FsProvider *fs) {
 
 void panel_exit_drives(Panel *p, const FsProvider *fs) {
     (void)fs;PanelTab *tab=&p->tabs[p->active_tab];free(p->entries);p->in_drive_list=0;
-    p->entry_count=p->saved_entry_count;strncpy(tab->path,p->saved_path,4095);
-    const char *nm=strrchr(p->saved_path,'/');strncpy(tab->display_name,nm?nm+1:p->saved_path,63);
+    p->entry_count=p->saved_entry_count;
+    memcpy(tab->path,p->saved_path,4095);tab->path[4095]=0;
+    const char *nm=strrchr(p->saved_path,'/');
+    memcpy(tab->display_name,(nm&&nm[0])?nm+1:p->saved_path,63);tab->display_name[63]=0;
     if(p->saved_entry_count>0){p->entries=(FileEntry*)calloc(p->saved_entry_count,sizeof(FileEntry));
     memcpy(p->entries,p->saved_entries,p->saved_entry_count*sizeof(FileEntry));tab->cursor=p->saved_cursor;}
     else{p->entries=NULL;tab->cursor=0;} tab->scroll_offset=0;p->dirty=1;}
@@ -100,7 +103,8 @@ void panel_clear_tags(Panel *p){free(p->tagged);p->tagged=NULL;p->tagged_count=0
 
 int panel_tagged_or_current(const Panel *p, FileEntry **out, int *count) {
     if(p->tagged_count>0){*count=p->tagged_count;*out=(FileEntry*)malloc(p->tagged_count*sizeof(FileEntry));
-        for(int i=0;i<p->tagged_count;i++)(*out)[i]=p->entries[p->tagged[i]];return 1;}
+        for(int i=0;i<p->tagged_count;i++)(*out)[i]=p->entries[p->tagged[i]];
+        return 1;}
     if(p->entry_count>0){*count=1;*out=(FileEntry*)malloc(sizeof(FileEntry));
         (*out)[0]=p->entries[p->tabs[p->active_tab].cursor];return 1;}
     *count=0;*out=NULL;return 0;}
